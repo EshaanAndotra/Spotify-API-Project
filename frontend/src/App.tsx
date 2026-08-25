@@ -1,19 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { api, ApiError, type HealthResponse } from "./api/client";
-import { ProfileHeader } from "./components/ProfileHeader";
-import { Recent } from "./components/Recent";
-import { TopArtists } from "./components/TopArtists";
-import { TopTracks } from "./components/TopTracks";
+import { Layout } from "./components/Layout";
+import Artists from "./pages/Artists";
+import Insights from "./pages/Insights";
+import Recent from "./pages/Recent";
+import Tracks from "./pages/Tracks";
 
 /**
- * Shell-only app.
+ * Top-level auth gate.
  *
- * Goals for this first increment:
- * - Prove Vite/React/Tailwind pipeline works (dark base, Spotify-green accent).
- * - Prove the frontend can reach the backend (calls /health).
- * - Show a login call-to-action when not authenticated, a placeholder dashboard when we are.
+ * - Backend down → ErrorCard fullscreen.
+ * - Health pending → LoadingCard fullscreen.
+ * - Not authenticated → LoginCard fullscreen.
+ * - Authenticated → Layout (sidebar + main) wrapping the routed page.
  *
- * Feature components (TopTracks, TopArtists, Recent, etc.) come in later increments.
+ * Routes are intentionally minimal: /tracks, /artists, /recent, with /
+ * redirecting to /tracks as the default landing page.
  */
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -35,59 +38,28 @@ export default function App() {
     };
   }, []);
 
-  return (
-    <div className="min-h-full bg-surface text-zinc-100 font-sans">
-      <header className="border-b border-surface-border">
-        <div className="mx-auto max-w-6xl px-8 py-6 flex items-center justify-between">
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-xl font-semibold tracking-tight">
-              Listening Stats
-            </h1>
-            <span className="text-xs text-zinc-500">v0</span>
-          </div>
-          {health?.authenticated && !error ? (
-            <ProfileHeader />
-          ) : (
-            <BackendStatus health={health} error={error} />
-          )}
-        </div>
-      </header>
+  if (error) return <FullscreenShell><ErrorCard message={error} /></FullscreenShell>;
+  if (!health) return <FullscreenShell><LoadingCard /></FullscreenShell>;
+  if (!health.authenticated) return <FullscreenShell><LoginCard /></FullscreenShell>;
 
-      <main className="mx-auto max-w-6xl px-8 py-12">
-        {error && <ErrorCard message={error} />}
-        {!error && health && !health.authenticated && <LoginCard />}
-        {!error && health?.authenticated && <DashboardPlaceholder />}
-        {!error && !health && <LoadingCard />}
-      </main>
-    </div>
+  return (
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<Navigate to="/tracks" replace />} />
+        <Route path="tracks" element={<Tracks />} />
+        <Route path="artists" element={<Artists />} />
+        <Route path="recent" element={<Recent />} />
+        <Route path="insights" element={<Insights />} />
+        <Route path="*" element={<Navigate to="/tracks" replace />} />
+      </Route>
+    </Routes>
   );
 }
 
-function BackendStatus({
-  health,
-  error,
-}: {
-  health: HealthResponse | null;
-  error: string | null;
-}) {
-  const color = error
-    ? "bg-red-500"
-    : health?.authenticated
-    ? "bg-spotify"
-    : health
-    ? "bg-zinc-500"
-    : "bg-zinc-700";
-  const label = error
-    ? "backend unreachable"
-    : health?.authenticated
-    ? "connected"
-    : health
-    ? "logged out"
-    : "checking…";
+function FullscreenShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-zinc-400">
-      <span className={`inline-block h-2 w-2 rounded-full ${color}`} />
-      {label}
+    <div className="min-h-screen bg-surface text-zinc-100 font-sans">
+      <div className="mx-auto max-w-2xl px-8 py-24">{children}</div>
     </div>
   );
 }
@@ -104,21 +76,29 @@ function LoginCard() {
       </p>
       <a
         href={api.loginUrl()}
-        className="mt-8 inline-flex items-center rounded-full bg-spotify px-6 py-2.5 text-sm font-medium text-black hover:brightness-110"
+        className="mt-8 inline-flex items-center gap-2.5 rounded-full bg-spotify px-6 py-2.5 text-sm font-semibold text-black transition hover:brightness-110"
       >
+        <SpotifyIcon className="h-4 w-4" />
         Log in with Spotify
       </a>
     </section>
   );
 }
 
-function DashboardPlaceholder() {
+/**
+ * Official Spotify icon glyph. Inline SVG so we don't need an external asset
+ * and so it inherits text color (currentColor = black on the green button).
+ */
+function SpotifyIcon({ className }: { className?: string }) {
   return (
-    <div className="space-y-8">
-      <TopTracks />
-      <TopArtists />
-      <Recent />
-    </div>
+    <svg
+      viewBox="0 0 168 168"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M84 0C37.7 0 0 37.7 0 84s37.7 84 84 84 84-37.7 84-84S130.5 0 84 0zm38.5 121c-1.6 2.6-5 3.5-7.6 1.9-20.8-12.7-47-15.6-77.8-8.6-3 .7-6-1.2-6.6-4.2-.7-3 1.2-6 4.2-6.6 33.7-7.7 62.6-4.4 86 9.9 2.6 1.6 3.5 5 1.8 7.6zm10.3-22.9c-2 3.3-6.3 4.3-9.6 2.3-23.8-14.6-60.1-18.9-88.3-10.3-3.7 1.1-7.6-1-8.7-4.7-1.1-3.7 1-7.6 4.7-8.7 32.2-9.8 72.2-5 99.5 11.8 3.3 2 4.3 6.3 2.4 9.6zm.9-23.9C105 56.8 57.2 55 30 63.2c-4.4 1.3-9.1-1.2-10.5-5.6-1.3-4.4 1.2-9.1 5.6-10.5 31.2-9.5 84-7.6 117.4 12.5 4 2.4 5.3 7.6 2.9 11.6-2.4 4-7.6 5.3-11.7 2.9z" />
+    </svg>
   );
 }
 

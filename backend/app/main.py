@@ -105,7 +105,7 @@ def top_tracks(
         default=TimeRange.medium_term,
         description="Spotify listening window",
     ),
-    limit: int = Query(default=20, ge=1, le=50),
+    limit: int = Query(default=20, ge=1, le=100),
 ) -> TopTracksResponse:
     """Top tracks for the authenticated user in the given time range."""
     try:
@@ -125,7 +125,7 @@ def top_artists(
         default=TimeRange.medium_term,
         description="Spotify listening window",
     ),
-    limit: int = Query(default=20, ge=1, le=50),
+    limit: int = Query(default=20, ge=1, le=100),
 ) -> TopArtistsResponse:
     """Top artists for the authenticated user in the given time range."""
     try:

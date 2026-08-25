@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type UserProfile } from "../api/client";
 
+/**
+ * Vertical profile block intended for the bottom of the sidebar:
+ * avatar + name on top row, tier on the next, log out button below.
+ *
+ * Name kept as ProfileHeader for continuity, even though it's no longer in the header.
+ */
 export function ProfileHeader() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -13,8 +19,7 @@ export function ProfileHeader() {
         if (!cancelled) setProfile(p);
       })
       .catch((_: unknown) => {
-        // Profile fetch failures are non-fatal here — the status dot in App
-        // already surfaces auth issues. Just leave profile unset.
+        // Profile fetch failures are non-fatal — leave profile unset.
       });
     return () => {
       cancelled = true;
@@ -26,40 +31,32 @@ export function ProfileHeader() {
     try {
       await api.logout();
     } catch (err) {
-      // Log but continue — we want the user back on the login screen regardless.
       if (err instanceof ApiError) console.warn("Logout API error:", err.message);
     }
     // Full reload kicks the app back to the unauthenticated state cleanly.
     window.location.reload();
   }
 
-  if (!profile) {
-    return (
-      <div className="flex items-center gap-3 text-xs text-zinc-500">
-        <span className="inline-block h-2 w-2 rounded-full bg-spotify" />
-        connected
-      </div>
-    );
-  }
-
-  const avatar = profile.images[0]?.url ?? null;
-  const name = profile.display_name || profile.id;
+  const avatar = profile?.images[0]?.url ?? null;
+  const name = profile?.display_name || profile?.id || "Connected";
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="space-y-3">
       <div className="flex items-center gap-3">
         {avatar ? (
           <img
             src={avatar}
             alt=""
-            className="h-8 w-8 rounded-full object-cover"
+            className="h-9 w-9 rounded-full object-cover"
           />
         ) : (
-          <div className="h-8 w-8 rounded-full bg-surface-border" />
+          <div className="h-9 w-9 rounded-full bg-surface-border" />
         )}
-        <div className="text-right leading-tight">
-          <div className="text-sm font-medium text-zinc-100">{name}</div>
-          {profile.product && (
+        <div className="min-w-0 leading-tight">
+          <div className="truncate text-sm font-medium text-zinc-100">
+            {name}
+          </div>
+          {profile?.product && (
             <div className="text-[10px] uppercase tracking-wide text-zinc-500">
               {profile.product}
             </div>
@@ -69,7 +66,7 @@ export function ProfileHeader() {
       <button
         onClick={handleLogout}
         disabled={loggingOut}
-        className="rounded-full border border-surface-border px-3 py-1 text-xs text-zinc-400 hover:text-zinc-100 hover:border-zinc-500 disabled:opacity-50"
+        className="w-full rounded-full border border-surface-border px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-100 hover:border-zinc-500 disabled:opacity-50"
       >
         {loggingOut ? "Logging out…" : "Log out"}
       </button>

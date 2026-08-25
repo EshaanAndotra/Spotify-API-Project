@@ -61,19 +61,59 @@ def current_user() -> dict[str, Any]:
     return call_with_retry(lambda c: c.current_user())
 
 
+def _PAGED_PAGE_SIZE() -> int:
+    """Spotify's hard cap on /me/top/* requests. Keep this in one place."""
+    return 50
+
+
 def top_tracks(time_range: str, limit: int = 20) -> list[dict[str, Any]]:
-    """GET /me/top/tracks — returns the raw `items` list from Spotify."""
+    """GET /me/top/tracks — returns the raw `items` list from Spotify.
+
+    Spotify caps each request at 50, so we page when the caller wants more.
+    Stops early if Spotify returns a short page (means we've hit the end).
+    """
     def _fetch(c: spotipy.Spotify) -> list[dict[str, Any]]:
-        resp = c.current_user_top_tracks(limit=limit, time_range=time_range)
-        return resp.get("items", []) if resp else []
+        items: list[dict[str, Any]] = []
+        remaining = limit
+        offset = 0
+        page_size = _PAGED_PAGE_SIZE()
+        while remaining > 0:
+            chunk = min(remaining, page_size)
+            resp = c.current_user_top_tracks(
+                limit=chunk, offset=offset, time_range=time_range,
+            )
+            page = resp.get("items", []) if resp else []
+            items.extend(page)
+            if len(page) < chunk:
+                break  # no more data on Spotify's side
+            remaining -= chunk
+            offset += chunk
+        return items
     return call_with_retry(_fetch)
 
 
 def top_artists(time_range: str, limit: int = 20) -> list[dict[str, Any]]:
-    """GET /me/top/artists — returns the raw `items` list from Spotify."""
+    """GET /me/top/artists — returns the raw `items` list from Spotify.
+
+    Same pagination strategy as top_tracks (Spotify caps single calls at 50).
+    """
     def _fetch(c: spotipy.Spotify) -> list[dict[str, Any]]:
-        resp = c.current_user_top_artists(limit=limit, time_range=time_range)
-        return resp.get("items", []) if resp else []
+        items: list[dict[str, Any]] = []
+        remaining = limit
+        offset = 0
+        page_size = _PAGED_PAGE_SIZE()
+        while remaining > 0:
+            chunk = min(remaining, page_size)
+            resp = c.current_user_top_artists(
+                limit=chunk, offset=offset, time_range=time_range,
+            )
+            page = resp.get("items", []) if resp else []
+            items.extend(page)
+            if len(page) < chunk:
+                break
+            remaining -= chunk
+            offset += chunk
+        return items
     return call_with_retry(_fetch)
 
 

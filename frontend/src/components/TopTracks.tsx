@@ -1,18 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, ApiError, type TimeRange, type Track } from "../api/client";
 import { RangeToggle } from "./RangeToggle";
+import { SearchBox } from "./SearchBox";
 
 export function TopTracks() {
   const [range, setRange] = useState<TimeRange>("medium_term");
   const [tracks, setTracks] = useState<Track[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     setTracks(null);
     setError(null);
     api
-      .topTracks(range, 20)
+      .topTracks(range, 100)
       .then((resp) => {
         if (!cancelled) setTracks(resp.items);
       })
@@ -25,35 +27,53 @@ export function TopTracks() {
     };
   }, [range]);
 
+  // Filter by track name OR any contributing artist's name. Rank stays
+  // pinned to the original position — your "true" #15 should still say 15
+  // even when filtered down.
+  const filtered = useMemo(() => {
+    if (!tracks) return null;
+    const q = query.trim().toLowerCase();
+    if (!q) return tracks.map((t, i) => ({ track: t, rank: i + 1 }));
+    return tracks
+      .map((t, i) => ({ track: t, rank: i + 1 }))
+      .filter(
+        ({ track }) =>
+          track.name.toLowerCase().includes(q) ||
+          track.artists.some((a) => a.name.toLowerCase().includes(q)),
+      );
+  }, [tracks, query]);
+
   return (
     <section className="rounded-xl border border-surface-border bg-surface-raised p-8">
-      <div className="flex items-end justify-between flex-wrap gap-4">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">Top Tracks</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Your most-played tracks over the selected window.
-          </p>
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchBox
+          value={query}
+          onChange={setQuery}
+          placeholder="Filter tracks or artists…"
+        />
         <RangeToggle value={range} onChange={setRange} />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         {error && <InlineError message={error} />}
         {!error && !tracks && <SkeletonList />}
         {!error && tracks && tracks.length === 0 && (
           <p className="text-sm text-zinc-500">No tracks in this range.</p>
         )}
-        {!error && tracks && tracks.length > 0 && <TrackList tracks={tracks} />}
+        {!error && filtered && tracks && tracks.length > 0 && filtered.length === 0 && (
+          <p className="text-sm text-zinc-500">No matches for "{query}".</p>
+        )}
+        {!error && filtered && filtered.length > 0 && <TrackList rows={filtered} />}
       </div>
     </section>
   );
 }
 
-function TrackList({ tracks }: { tracks: Track[] }) {
+function TrackList({ rows }: { rows: { track: Track; rank: number }[] }) {
   return (
     <ol className="divide-y divide-surface-border">
-      {tracks.map((t, i) => (
-        <TrackRow key={t.id} track={t} rank={i + 1} />
+      {rows.map(({ track, rank }) => (
+        <TrackRow key={track.id} track={track} rank={rank} />
       ))}
     </ol>
   );

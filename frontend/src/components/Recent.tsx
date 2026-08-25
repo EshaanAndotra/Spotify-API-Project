@@ -41,14 +41,7 @@ export function Recent() {
 
   return (
     <section className="rounded-xl border border-surface-border bg-surface-raised p-8">
-      <div className="flex items-end justify-between flex-wrap gap-4">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">Recent Plays</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            The last 20 tracks you listened to. Spotify caps history at 50 plays
-            within 24 hours.
-          </p>
-        </div>
+      <div className="flex justify-end">
         <button
           onClick={load}
           disabled={loading}
@@ -58,7 +51,7 @@ export function Recent() {
         </button>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         {error && <InlineError message={error} />}
         {!error && !plays && <SkeletonList />}
         {!error && plays && plays.length === 0 && (

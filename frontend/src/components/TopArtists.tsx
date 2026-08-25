@@ -1,18 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, ApiError, type Artist, type TimeRange } from "../api/client";
 import { RangeToggle } from "./RangeToggle";
+import { SearchBox } from "./SearchBox";
 
 export function TopArtists() {
   const [range, setRange] = useState<TimeRange>("medium_term");
   const [artists, setArtists] = useState<Artist[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     setArtists(null);
     setError(null);
     api
-      .topArtists(range, 20)
+      .topArtists(range, 100)
       .then((resp) => {
         if (!cancelled) setArtists(resp.items);
       })
@@ -25,37 +27,48 @@ export function TopArtists() {
     };
   }, [range]);
 
+  // Filter by artist name. Rank pinned to original position so #15 keeps its
+  // identity when the list is filtered down.
+  const filtered = useMemo(() => {
+    if (!artists) return null;
+    const q = query.trim().toLowerCase();
+    if (!q) return artists.map((a, i) => ({ artist: a, rank: i + 1 }));
+    return artists
+      .map((a, i) => ({ artist: a, rank: i + 1 }))
+      .filter(({ artist }) => artist.name.toLowerCase().includes(q));
+  }, [artists, query]);
+
   return (
     <section className="rounded-xl border border-surface-border bg-surface-raised p-8">
-      <div className="flex items-end justify-between flex-wrap gap-4">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">Top Artists</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Your most-played artists over the selected window.
-          </p>
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchBox
+          value={query}
+          onChange={setQuery}
+          placeholder="Filter artists…"
+        />
         <RangeToggle value={range} onChange={setRange} />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         {error && <InlineError message={error} />}
         {!error && !artists && <SkeletonList />}
         {!error && artists && artists.length === 0 && (
           <p className="text-sm text-zinc-500">No artists in this range.</p>
         )}
-        {!error && artists && artists.length > 0 && (
-          <ArtistList artists={artists} />
+        {!error && filtered && artists && artists.length > 0 && filtered.length === 0 && (
+          <p className="text-sm text-zinc-500">No matches for "{query}".</p>
         )}
+        {!error && filtered && filtered.length > 0 && <ArtistList rows={filtered} />}
       </div>
     </section>
   );
 }
 
-function ArtistList({ artists }: { artists: Artist[] }) {
+function ArtistList({ rows }: { rows: { artist: Artist; rank: number }[] }) {
   return (
     <ol className="divide-y divide-surface-border">
-      {artists.map((a, i) => (
-        <ArtistRow key={a.id} artist={a} rank={i + 1} />
+      {rows.map(({ artist, rank }) => (
+        <ArtistRow key={artist.id} artist={artist} rank={rank} />
       ))}
     </ol>
   );
