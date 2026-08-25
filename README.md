@@ -1,16 +1,16 @@
 # Spotify Listening Stats
 
-A local dashboard for visualizing your Spotify listening data — top tracks,
+A local dashboard for visualizing your Spotify listening data. Displays top tracks,
 top artists, recent activity, and derived stats. FastAPI backend handles
 OAuth and Spotify API calls; React frontend renders the views. Runs entirely
 on your machine.
 
 ## Stack
 
-- **Backend** — Python 3.11+, FastAPI, uvicorn, spotipy
-- **Frontend** — React 18, Vite, TypeScript, Tailwind CSS, Recharts
-- **Auth** — Spotify OAuth 2.0 with PKCE; token cached in `backend/.cache/`
-- **Storage** — none. No database, no persistent user data beyond the OAuth
+- **Backend** - Python 3.11+, FastAPI, uvicorn, spotipy
+- **Frontend** - React 18, Vite, TypeScript, Tailwind CSS, Recharts
+- **Auth** - Spotify OAuth 2.0 with PKCE; token cached in `backend/.cache/`
+- **Storage** - none. No database, no persistent user data beyond the OAuth
   cache file.
 
 ## Prerequisites
@@ -93,9 +93,9 @@ frontend/
 | GET  | `/login` | Redirect to Spotify consent |
 | GET  | `/callback` | OAuth code exchange |
 | GET  | `/me` | Current user profile |
-| GET  | `/top/tracks?range=…&limit=…` | Top tracks (1–100) |
-| GET  | `/top/artists?range=…&limit=…` | Top artists (1–100) |
-| GET  | `/recent?limit=…` | Last plays (1–50) |
+| GET  | `/top/tracks?range=…&limit=…` | Top tracks (1-100) |
+| GET  | `/top/artists?range=…&limit=…` | Top artists (1-100) |
+| GET  | `/recent?limit=…` | Last plays (1-50) |
 | GET  | `/audio-features?ids=…` | Audio features (see note) |
 | POST | `/logout` | Clear token cache |
 
@@ -112,7 +112,7 @@ apps. If your app was created after that date, expect:
 - `followers` returns `null` on artists
 - `/audio-features` returns 403
 
-The dashboard avoids these fields where it can — Insights is built from
+The dashboard avoids these fields where it can - Insights is built from
 durations, release dates, artist references, and play timestamps, all of
 which still work. Nothing the app can do to recover the others; this is a
 Spotify-side restriction.
